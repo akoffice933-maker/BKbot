@@ -15,6 +15,7 @@ Telegram bot for sports analytics, match probability estimation, and hedge calcu
 - `/analyze` returns model-style output with factors and confidence.
 - `/calc_hedge` runs an FSM-based hedge calculator.
 - `/track`, `/untrack`, `/status`, `/paper`, `/stats` are present as stubs for future work.
+- Polymarket foundation is added for read-only market discovery and pricing.
 
 ## Hedge Calculator
 
@@ -35,6 +36,7 @@ The codebase is organized into small layers:
 - `src/statbet_bot/database.py` opens PostgreSQL and Redis connections and validates that Alembic migrations were applied.
 - `src/statbet_bot/handlers/` contains Telegram command handlers and FSM flow.
 - `src/statbet_bot/services/` contains business logic for hedge calculations and predictions.
+- `src/statbet_bot/services/polymarket.py` provides read-only access to Polymarket Gamma and CLOB APIs.
 - `src/statbet_bot/models.py` contains hedge math primitives and a placeholder prediction model.
 - `alembic/` contains schema migrations and Alembic runtime configuration.
 - `tests/` contains unit and integration-style tests for core domain logic.
@@ -48,6 +50,7 @@ The codebase is organized into small layers:
 - Alembic
 - Pydantic / pydantic-settings
 - pandas, scikit-learn, xgboost, shap
+- httpx
 - pytest / pytest-asyncio
 
 ## Repository Layout
@@ -113,6 +116,8 @@ DATABASE_URL=postgresql://user:password@localhost/statbet
 REDIS_URL=redis://localhost:6379
 API_FOOTBALL_KEY=
 ODDS_API_KEY=
+POLYMARKET_HOST=https://clob.polymarket.com
+POLYMARKET_CHAIN_ID=137
 ```
 
 Important:
@@ -157,7 +162,20 @@ python -m pytest -q
 
 Current local status:
 
-- `46` tests passing
+- Polymarket service tests are included in the local suite.
+
+## Polymarket
+
+The project now includes the foundation for a read-only Polymarket integration.
+
+Current Phase 0 + 1 scope:
+
+- Search markets through the Gamma API
+- Fetch a market by slug or ID
+- Fetch CLOB prices for token IDs
+- Convert Polymarket share prices to decimal odds and back
+
+Trading, wallet management, and order placement are intentionally out of scope for the current iteration.
 
 ## Current Limitations
 
@@ -173,6 +191,7 @@ Current local status:
 - Implement live match tracking and user subscriptions.
 - Add real paper-trading workflows and bet settlement.
 - Add CI, linting, and deployment automation.
+- Add `/pm` bot handlers and cross-hedge workflows for Polymarket.
 
 ## Disclaimer
 

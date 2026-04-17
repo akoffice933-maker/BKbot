@@ -17,11 +17,12 @@
 6. [База данных](#6-база-данных)
 7. [Конфигурация](#7-конфигурация)
 8. [Математические модели](#8-математические-модели)
-9. [API команд бота](#9-api-команд-бота)
-10. [Запуск и развёртывание](#10-запуск-и-развёртывание)
-11. [Тестирование](#11-тестирование)
-12. [Зависимости](#12-зависимости)
-13. [Дорожная карта](#13-дорожная-карта)
+9. [Polymarket](#9-polymarket)
+10. [API команд бота](#10-api-команд-бота)
+11. [Запуск и развёртывание](#11-запуск-и-развёртывание)
+12. [Тестирование](#12-тестирование)
+13. [Зависимости](#13-зависимости)
+14. [Дорожная карта](#14-дорожная-карта)
 
 ---
 
@@ -87,6 +88,7 @@ Telegram API
      │       │
      │       ├── Services (бизнес-логика)
      │       │       ├── HedgeService
+     │       │       ├── PolymarketService
      │       │       └── PredictionService
      │       │               │
      │       │               └── Models (HedgeCalculator, PredictionModel)
@@ -188,6 +190,8 @@ BKbot/
 | `REDIS_URL` | `str` | — | Redis URL (default: localhost:6379) |
 | `API_FOOTBALL_KEY` | `str \| None` | — | Ключ API-Football для данных о матчах |
 | `ODDS_API_KEY` | `str \| None` | — | Ключ The Odds API для коэффициентов |
+| `POLYMARKET_HOST` | `str` | — | Базовый CLOB host Polymarket |
+| `POLYMARKET_CHAIN_ID` | `int` | — | Chain ID сети Polymarket (Polygon = 137) |
 
 **Валидаторы:**
 - `TELEGRAM_TOKEN` — минимум 10 символов, не может быть плейсхолдером (`your_token_here`, `changeme`)
@@ -205,9 +209,9 @@ BKbot/
 | Redis | `redis.asyncio` | Кеширование, сессии, live-данные |
 
 Методы:
-- `init()` — создаёт пул, подключает Redis, создаёт таблицы и индексы
+- `init()` — создаёт пул, подключает Redis и проверяет наличие применённых Alembic-миграций
 - `close()` — корректно закрывает все соединения
-- `_create_tables()` — идемпотентное создание схемы (`IF NOT EXISTS`)
+- `_verify_schema()` — fail-fast проверка обязательных таблиц
 
 ---
 
@@ -234,6 +238,28 @@ BKbot/
 | `k_main` | `> 1.0` и `<= 100.0` |
 | `k_hedge` | `> 1.0` и `<= 100.0` |
 | `percent` | `>= 0` и `<= 100` |
+
+---
+
+### `services/polymarket.py` — Read-only интеграция Polymarket
+
+На текущем этапе реализован foundation-слой для чтения данных Polymarket без торговли.
+
+Источник данных:
+- **Gamma API** — поиск и получение market metadata
+- **CLOB API** — получение share price
+
+Реализованные методы:
+- `search_markets(query, limit)` — поиск рынков через `GET /public-search`
+- `get_market(slug_or_id)` — получение рынка по slug или ID
+- `get_price(token_id)` — получение share price для токена
+- `price_to_odds(price)` — перевод share price в decimal odds
+- `odds_to_price(odds)` — перевод decimal odds в implied share price
+
+Особенности реализации:
+- встроенный rate limiting на уровне сервиса
+- read-only режим без private key и без ордеров
+- единый `PolymarketServiceError` для graceful degradation в handlers
 
 ---
 

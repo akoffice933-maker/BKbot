@@ -2,7 +2,7 @@
 
 import pytest
 from statbet_bot.models import HedgeCalculator, HedgeInput
-from statbet_bot.services.hedge import HedgeService
+from statbet_bot.services.hedge import ArbitrageResult, HedgeService
 from statbet_bot.utils.validators import validate_stake, validate_odds, validate_percent
 
 
@@ -125,6 +125,97 @@ class TestHedgeService:
         result = HedgeService.calculate(100, 1.5, 1.5)
         assert result.is_arbitrage is False
         assert result.guaranteed_profit is None
+
+    def test_calculate_cross_hedge_returns_correct_values(self):
+        result = HedgeService.calculate_cross_hedge(2.5, 0.4, 100, 50)
+        assert result.error is None
+        assert result.full_hedge == pytest.approx(225.0)
+        assert result.partial_hedge == pytest.approx(112.5)
+        assert result.cross_hedge_amount == pytest.approx(112.5)
+        assert result.lock_profit == pytest.approx(150.0)
+        assert result.pm_price == pytest.approx(0.4)
+        assert result.is_arbitrage is False
+        assert result.arbitrage_margin_pm is None
+
+    def test_calculate_cross_hedge_detects_pm_arbitrage(self):
+        result = HedgeService.calculate_cross_hedge(3.0, 0.5, 100, 100)
+        assert result.error is None
+        assert result.is_arbitrage is True
+        assert result.arbitrage_margin_pm == pytest.approx(1 - ((1 / 3.0) + 0.5))
+        assert result.guaranteed_profit is not None
+        assert result.guaranteed_profit > 0
+
+    def test_calculate_cross_hedge_rejects_invalid_pm_price(self):
+        result = HedgeService.calculate_cross_hedge(2.5, 1.0, 100, 100)
+        assert result.error == "Цена Polymarket должна быть между 0 и 1"
+        assert result.cross_hedge_amount is None
+
+    def test_detect_arbitrage_with_pm_positive_margin(self):
+        result = HedgeService.detect_arbitrage_with_pm(3.0, 0.5)
+        assert isinstance(result, ArbitrageResult)
+        assert result.is_arbitrage is True
+        assert result.margin == pytest.approx(1 - ((1 / 3.0) + 0.5))
+        assert result.polymarket_no_price == pytest.approx(0.5)
+
+    def test_detect_arbitrage_with_pm_no_margin(self):
+        result = HedgeService.detect_arbitrage_with_pm(2.5, 0.4)
+        assert result.is_arbitrage is False
+        assert result.margin is None
+
+    def test_detect_arbitrage_with_pm_rejects_invalid_inputs(self):
+        result = HedgeService.detect_arbitrage_with_pm(1.0, 0.4)
+        assert result.is_arbitrage is False
+        assert result.error == "Коэффициент должен быть больше 1.0"
+
+    def test_detect_arbitrage_with_pm_rejects_invalid_pm_price_zero(self):
+        # pm_price = 0.0 should be rejected (must be > 0)
+        result = HedgeService.detect_arbitrage_with_pm(2.5, 0.0)
+        assert result.is_arbitrage is False
+        assert result.error == "Цена Polymarket должна быть между 0 и 1"
+
+    def test_detect_arbitrage_with_pm_rejects_invalid_pm_price_one(self):
+        # pm_price = 1.0 should be rejected (must be < 1) to avoid ZeroDivisionError
+        result = HedgeService.detect_arbitrage_with_pm(2.5, 1.0)
+        assert result.is_arbitrage is False
+        assert result.error == "Цена Polymarket должна быть между 0 и 1"
+
+    def test_detect_arbitrage_with_pm_rejects_invalid_pm_price_negative(self):
+        result = HedgeService.detect_arbitrage_with_pm(2.5, -0.1)
+        assert result.is_arbitrage is False
+        assert result.error == "Цена Polymarket должна быть между 0 и 1"
+
+    def test_detect_arbitrage_with_pm_rejects_invalid_pm_price_over_one(self):
+        result = HedgeService.detect_arbitrage_with_pm(2.5, 1.5)
+        assert result.is_arbitrage is False
+        assert result.error == "Цена Polymarket должна быть между 0 и 1"
+
+    def test_detect_arbitrage_with_pm_rejects_odds_over_max(self):
+        result = HedgeService.detect_arbitrage_with_pm(200.0, 0.4)
+        assert result.is_arbitrage is False
+        assert result.error is not None
+        assert "превышать" in result.error.lower() or "max" in result.error.lower() or "200" in result.error
+
+    def test_detect_arbitrage_with_pm_boundary_pm_price_near_zero(self):
+        # pm_price close to 0 should not crash (no ZeroDivisionError)
+        result = HedgeService.detect_arbitrage_with_pm(1.5, 0.001)
+        assert result.is_arbitrage is False  # 1/1.5 + 0.999 > 1
+        assert result.error is None
+
+    def test_detect_arbitrage_with_pm_boundary_pm_price_near_one(self):
+        # pm_price close to 1 should not crash
+        result = HedgeService.detect_arbitrage_with_pm(1.5, 0.999)
+        assert result.error is None  # Valid input, check no crash
+        assert isinstance(result.is_arbitrage, bool)
+
+    def test_calculate_cross_hedge_rejects_pm_price_zero(self):
+        result = HedgeService.calculate_cross_hedge(2.5, 0.0, 100, 100)
+        assert result.error == "Цена Polymarket должна быть между 0 и 1"
+        assert result.cross_hedge_amount is None
+
+    def test_calculate_cross_hedge_rejects_pm_price_one(self):
+        result = HedgeService.calculate_cross_hedge(2.5, 1.0, 100, 100)
+        assert result.error == "Цена Polymarket должна быть между 0 и 1"
+        assert result.cross_hedge_amount is None
 
 
 class TestHedgeInput:

@@ -10,6 +10,7 @@ from statbet_bot.config import Config
 from statbet_bot.handlers import register_handlers
 from statbet_bot.database import Database
 from statbet_bot.middleware import ErrorHandlerMiddleware, RateLimitMiddleware
+from statbet_bot.services.polymarket import PolymarketService
 
 # Configure structured logging
 logging.basicConfig(
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 async def main():
     bot: Bot | None = None
     db: Database | None = None
+    pm_service: PolymarketService | None = None
 
     try:
         # Load and validate configuration
@@ -45,8 +47,14 @@ async def main():
         await db.init()
         logger.info("Database initialized")
 
-        # Inject db into all handlers via dispatcher workflow_data
+        # Inject db and PolymarketService into all handlers via dispatcher workflow_data
         dp["db"] = db
+
+        pm_service = PolymarketService(
+            host=config.polymarket_host,
+            chain_id=config.polymarket_chain_id,
+        )
+        dp["pm"] = pm_service
 
         # Register handlers
         register_handlers(dp)
@@ -69,6 +77,9 @@ async def main():
         logger.error(f"Critical error: {e}", exc_info=True)
         sys.exit(1)
     finally:
+        if pm_service is not None:
+            await pm_service.close()
+            logger.info("Polymarket service connections closed")
         if db is not None:
             await db.close()
             logger.info("Database connections closed")

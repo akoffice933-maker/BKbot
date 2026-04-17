@@ -1,4 +1,12 @@
+env
+# Environment & secrets
 .env
+!.env.example
+*.key
+*.pem
+*.secret
+
+# Python
 .venv/
 __pycache__/
 .pytest_cache/
@@ -21,3 +29,14 @@ Desktop.ini
 
 # Local project artifacts
 bkbot.txt
+
+# Docker
+.docker/
+
+# Testing
+.coverage
+htmlcov/
+*.cover
+.ruff_cache/
+.mypy_cache/
+

@@ -9,6 +9,8 @@ class Config(BaseSettings):
     redis_url: str = Field("redis://localhost:6379")
     api_football_key: Optional[str] = Field(None)
     odds_api_key: Optional[str] = Field(None)
+    polymarket_host: str = Field("https://clob.polymarket.com")
+    polymarket_chain_id: int = Field(137, ge=1)
 
     model_config = {
         "env_file": ".env",
@@ -29,6 +31,13 @@ class Config(BaseSettings):
         if not v.startswith(("postgresql://", "postgres://")):
             raise ValueError("DATABASE_URL должен начинаться с postgresql:// или postgres://")
         return v
+
+    @field_validator("polymarket_host")
+    @classmethod
+    def polymarket_host_must_be_valid(cls, v: str) -> str:
+        if not v.startswith(("https://", "http://")):
+            raise ValueError("POLYMARKET_HOST должен начинаться с https:// или http://")
+        return v.rstrip("/")
 
     @classmethod
     def load(cls) -> "Config":

@@ -9,6 +9,7 @@ redis==5.2.1
 asyncpg>=0.30.0
 pydantic==2.10.0
 pydantic-settings==2.7.0
+httpx[http2]>=0.27.0
 
 # Note: For Python 3.14, use asyncpg 0.31.0+.
 # Install with 'pip install -e .' to include this package
