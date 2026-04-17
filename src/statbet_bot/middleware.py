@@ -27,9 +27,13 @@ class ErrorHandlerMiddleware(BaseMiddleware):
         except Exception as e:
             logger.error(f"Error in handler: {e}", exc_info=True)
             if isinstance(event, Message):
-                await event.answer(
-                    "⚠️ Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже."
-                )
+                try:
+                    await event.answer(
+                        "⚠️ Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже."
+                    )
+                except Exception:
+                    logger.error("Failed to send error message to user", exc_info=True)
+                return None
             raise
 
 

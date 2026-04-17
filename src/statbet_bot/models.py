@@ -2,7 +2,9 @@ import pandas as pd
 import xgboost as xgb
 import shap
 from typing import Dict, Any, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
+
+from statbet_bot.constants import ValidationLimits
 
 
 class HedgeCalculator:
@@ -30,10 +32,14 @@ class HedgeCalculator:
 
 
 class HedgeInput(BaseModel):
-    stake: float = Field(..., gt=0)
-    k_main: float = Field(..., gt=1)
-    k_hedge: float = Field(..., gt=1)
-    percent: Optional[float] = Field(None, ge=0, le=100)  # ge/le enforced by Pydantic
+    stake: float = Field(..., ge=ValidationLimits.MIN_STAKE, le=ValidationLimits.MAX_STAKE)
+    k_main: float = Field(..., gt=ValidationLimits.MIN_ODDS, le=ValidationLimits.MAX_ODDS)
+    k_hedge: float = Field(..., gt=ValidationLimits.MIN_ODDS, le=ValidationLimits.MAX_ODDS)
+    percent: Optional[float] = Field(
+        None,
+        ge=ValidationLimits.MIN_PERCENT,
+        le=ValidationLimits.MAX_PERCENT,
+    )
 
 
 class PredictionModel:

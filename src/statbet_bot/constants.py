@@ -8,7 +8,7 @@ class ValidationLimits:
     """Validation limits for user inputs."""
     
     # Stake limits
-    MIN_STAKE: float = 0.01
+    MIN_STAKE: float = 0.01  # inclusive: stake must be >= 0.01
     MAX_STAKE: float = 1_000_000.0
     
     # Odds limits
@@ -57,5 +57,5 @@ class Messages:
     ERROR_INVALID_NUMBER = "Введите корректное число"
     ERROR_NAN_INF = "Некорректное числовое значение"
     ERROR_STAKE_POSITIVE = "Сумма должна быть положительной"
-    Error_MESSAGE_MIN_STAKE = "Минимальная сумма"
+    ERROR_MIN_STAKE = "Минимальная сумма"
 

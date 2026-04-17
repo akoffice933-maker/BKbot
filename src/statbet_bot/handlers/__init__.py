@@ -1,7 +1,7 @@
 from aiogram import Dispatcher, F
 from aiogram.filters import Command
 from aiogram.fsm.state import any_state
-from statbet_bot.handlers.start import start_handler
+from statbet_bot.handlers.start import StartStates, process_age_confirm, start_handler
 from statbet_bot.handlers.matches import matches_handler
 from statbet_bot.handlers.analyze import analyze_handler
 from statbet_bot.handlers.calc_hedge import (
@@ -30,6 +30,7 @@ def register_handlers(dp: Dispatcher):
     dp.message.register(stats_handler, Command("stats"))
 
     # FSM handlers - use F filter to match state
+    dp.message.register(process_age_confirm, F.text, StartStates.waiting_for_age_confirm)
     dp.message.register(process_stake, F.text, HedgeStates.waiting_for_stake)
     dp.message.register(process_k_main, F.text, HedgeStates.waiting_for_k_main)
     dp.message.register(process_k_hedge, F.text, HedgeStates.waiting_for_k_hedge)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -19,7 +20,12 @@ target_metadata = None
 
 def _get_database_url() -> str:
     """Return an async SQLAlchemy URL for Alembic."""
-    url = config.get_main_option("sqlalchemy.url")
+    url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+
+    if not url:
+        raise RuntimeError(
+            "DATABASE_URL is not set. Export DATABASE_URL or provide sqlalchemy.url in alembic.ini."
+        )
 
     if url.startswith("postgresql://"):
         return url.replace("postgresql://", "postgresql+asyncpg://", 1)

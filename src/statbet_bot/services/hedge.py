@@ -2,7 +2,9 @@
 
 from typing import Optional
 from dataclasses import dataclass
-from statbet_bot.models import HedgeCalculator
+from pydantic import ValidationError
+
+from statbet_bot.models import HedgeCalculator, HedgeInput
 from statbet_bot.constants import ValidationLimits
 
 
@@ -36,25 +38,36 @@ class HedgeService:
         percent: float = 100.0
     ) -> Optional[str]:
         """Validate input parameters."""
-        if stake <= HedgeService.MIN_STAKE:
-            return "Сумма ставки должна быть больше 0"
-        
-        if stake > HedgeService.MAX_STAKE:
-            return f"Сумма ставки не может превышать {HedgeService.MAX_STAKE:,.0f}"
-        
-        if k_main <= HedgeService.MIN_ODDS:
-            return "Коэффициент должен быть больше 1.0"
-        
-        if k_main > HedgeService.MAX_ODDS:
-            return f"Коэффициент не может превышать {HedgeService.MAX_ODDS}"
-        
-        if k_hedge <= HedgeService.MIN_ODDS:
-            return "Коэффициент хеджа должен быть больше 1.0"
+        try:
+            HedgeInput(stake=stake, k_main=k_main, k_hedge=k_hedge, percent=percent)
+        except ValidationError as exc:
+            first_error = exc.errors()[0]
+            field_name = first_error["loc"][0]
+            error_type = first_error["type"]
 
-        if k_hedge > HedgeService.MAX_ODDS:
-            return f"Коэффициент хеджа не может превышать {HedgeService.MAX_ODDS}"
-        if not HedgeService.MIN_PERCENT <= percent <= HedgeService.MAX_PERCENT:
-            return f"Процент покрытия должен быть от {HedgeService.MIN_PERCENT} до {HedgeService.MAX_PERCENT}"
+            if field_name == "stake":
+                if error_type == "greater_than_equal":
+                    return f"Сумма ставки должна быть не меньше {HedgeService.MIN_STAKE}"
+                if error_type == "less_than_equal":
+                    return f"Сумма ставки не может превышать {HedgeService.MAX_STAKE:,.0f}"
+            if field_name == "k_main":
+                if error_type == "greater_than":
+                    return "Коэффициент должен быть больше 1.0"
+                if error_type == "less_than_equal":
+                    return f"Коэффициент не может превышать {HedgeService.MAX_ODDS}"
+            if field_name == "k_hedge":
+                if error_type == "greater_than":
+                    return "Коэффициент хеджа должен быть больше 1.0"
+                if error_type == "less_than_equal":
+                    return f"Коэффициент хеджа не может превышать {HedgeService.MAX_ODDS}"
+            if field_name == "percent":
+                return (
+                    f"Процент покрытия должен быть от "
+                    f"{HedgeService.MIN_PERCENT} до {HedgeService.MAX_PERCENT}"
+                )
+
+            return "Некорректные входные данные"
+
         return None
     
     @classmethod

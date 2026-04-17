@@ -88,6 +88,15 @@ class TestHedgeService:
         assert result.error is not None
         assert result.full_hedge is None
 
+    def test_calculate_accepts_min_stake_boundary(self):
+        result = HedgeService.calculate(0.01, 2.0, 1.8)
+        assert result.error is None
+        assert result.full_hedge is not None
+
+    def test_calculate_rejects_stake_below_min(self):
+        result = HedgeService.calculate(0.001, 2.0, 1.8)
+        assert result.error is not None
+
     def test_calculate_returns_error_on_negative_stake(self):
         result = HedgeService.calculate(-10, 2.0, 1.8)
         assert result.error is not None
@@ -126,6 +135,11 @@ class TestHedgeInput:
         assert hi.stake == 100
         assert hi.percent == 50
 
+    def test_valid_input_allows_max_boundaries(self):
+        hi = HedgeInput(stake=1_000_000, k_main=100.0, k_hedge=100.0, percent=100)
+        assert hi.stake == 1_000_000
+        assert hi.k_main == 100.0
+
     def test_optional_percent_defaults_to_none(self):
         hi = HedgeInput(stake=100, k_main=2.0, k_hedge=1.8)
         assert hi.percent is None
@@ -149,6 +163,14 @@ class TestHedgeInput:
     def test_invalid_percent_negative(self):
         with pytest.raises(Exception):
             HedgeInput(stake=100, k_main=2.0, k_hedge=1.8, percent=-1)
+
+    def test_invalid_stake_over_max(self):
+        with pytest.raises(Exception):
+            HedgeInput(stake=1_000_000.01, k_main=2.0, k_hedge=1.8)
+
+    def test_invalid_odds_over_max(self):
+        with pytest.raises(Exception):
+            HedgeInput(stake=100, k_main=100.1, k_hedge=1.8)
 
 
 class TestValidators:
